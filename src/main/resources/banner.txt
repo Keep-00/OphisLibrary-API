@@ -1,0 +1,11 @@
+ ██████╗ ██████╗ ██╗  ██╗██╗███████╗    ██╗     ██╗██████╗ ██████╗  █████╗ ██████╗ ██╗   ██╗
+██╔═══██╗██╔══██╗██║  ██║██║██╔════╝    ██║     ██║██╔══██╗██╔══██╗██╔══██╗██╔══██╗╚██╗ ██╔╝
+██║   ██║██████╔╝███████║██║███████╗    ██║     ██║██████╔╝██████╔╝███████║██████╔╝ ╚████╔╝
+██║   ██║██╔═══╝ ██╔══██║██║╚════██║    ██║     ██║██╔══██╗██╔══██╗██╔══██║██╔══██╗  ╚██╔╝
+╚██████╔╝██║     ██║  ██║██║███████║    ███████╗██║██████╔╝██║  ██║██║  ██║██║  ██║   ██║
+ ╚═════╝ ╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝    ╚══════╝╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+${AnsiColor.BRIGHT_MAGENTA}:: Ophis Library API ::${AnsiColor.DEFAULT}
+${AnsiColor.RED}------------------------------------------------------------------------------------------------${AnsiColor.DEFAULT}
+${AnsiColor.BRIGHT_RED} App Version :${AnsiColor.DEFAULT} v${application.version:-0.0.1-SNAPSHOT}    ${AnsiColor.BRIGHT_RED} Spring Boot :${AnsiColor.DEFAULT} v${spring-boot.version}
+${AnsiColor.BRIGHT_RED} Java Version:${AnsiColor.DEFAULT} v${java.version}              ${AnsiColor.BRIGHT_RED} Active Profile:${AnsiColor.DEFAULT} ${spring.profiles.active:-dev}
+${AnsiColor.RED}------------------------------------------------------------------------------------------------${AnsiColor.DEFAULT}
