@@ -1,0 +1,377 @@
+﻿// Arquivo: CreateSeriesCommand.java
+// Descrição: Classe do módulo OphisLibrary API (CreateSeriesCommand)
+
+package com.ophislibrary.catalog;
+
+import com.ophislibrary.catalog.series.core.FormatType;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+public record CreateSeriesCommand(
+        @NotBlank(message = "O tÃ­tulo Ã© obrigatÃ³rio.")
+        @Size(min = 3, max = 120, message = "O tÃ­tulo deve ter entre 3 e 120 caracteres.")
+        String title,
+
+        @NotBlank(message = "A sinopse Ã© obrigatÃ³ria.")
+        @Size(min = 10, max = 2000, message = "A sinopse deve ter entre 10 e 2000 caracteres.")
+        String synopsis,
+
+        @NotBlank(message = "O caminho da capa Ã© obrigatÃ³rio.")
+        String coverPath,
+
+        @NotNull(message = "O tipo de formato Ã© obrigatÃ³rio.")
+        FormatType formatType
+) {}
+
+// Arquivo: SeriesId.java
+// Descrição: Classe do módulo OphisLibrary API (SeriesId)
+
+package com.ophislibrary.catalog;
+
+import java.io.Serializable;
+import java.util.UUID;
+
+public record SeriesId(UUID value) implements Serializable {}
+
+// Arquivo: FormatType.java
+// Descrição: Classe do módulo OphisLibrary API (FormatType)
+
+package com.ophislibrary.catalog.series.core;
+
+public enum FormatType {
+    MANGA,
+    MANHWA,
+    MANHUA,
+    WEBTOON
+}
+
+// Arquivo: ImagePath.java
+// Descrição: Classe do módulo OphisLibrary API (ImagePath)
+
+package com.ophislibrary.catalog.series.core;
+
+import com.ophislibrary.catalog.shared.CatalogDomainException;
+import com.ophislibrary.catalog.shared.CatalogErrorCode;
+
+public record ImagePath(String value) {
+
+    public ImagePath {
+        if (value == null || value.isBlank()) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_COVER_PATH);
+        }
+
+        value = value.trim();
+    }
+}
+// Arquivo: Series.java
+// Descrição: Classe do módulo OphisLibrary API (Series)
+
+package com.ophislibrary.catalog.series.core;
+
+import com.ophislibrary.catalog.SeriesId;
+import com.ophislibrary.catalog.shared.CatalogDomainException;
+import com.ophislibrary.catalog.shared.CatalogErrorCode;
+import com.ophislibrary.catalog.shared.SharedIdGenerator;
+
+import java.util.Objects;
+
+public class Series {
+
+    private final SeriesId id;
+    private Title title;
+    private Synopsis synopsis;
+    private ImagePath coverPath;
+    private Status status;
+    private FormatType formatType;
+
+    protected Series(SeriesId id) {
+        this.id = id;
+    }
+
+    private Series(SeriesId id, Title title, Synopsis synopsis, ImagePath coverPath, Status status, FormatType formatType) {
+        this.id = Objects.requireNonNull(id, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_ID);
+        });
+        this.title = Objects.requireNonNull(title, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_NULL_PARAMETER, "Title cannot be null.");
+        });
+        this.synopsis = Objects.requireNonNull(synopsis, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_NULL_PARAMETER, "Synopsis cannot be null.");
+        });
+        this.coverPath = Objects.requireNonNull(coverPath, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_NULL_PARAMETER, "Cover path cannot be null.");
+        });
+        this.status = Objects.requireNonNull(status, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_NULL_PARAMETER, "Status cannot be null.");
+        });
+        this.formatType = Objects.requireNonNull(formatType, () -> {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_NULL_PARAMETER, "FormatType cannot be null.");
+        });
+    }
+
+    // Factory Method for new instances (starts in DRAFT status)
+    public static Series create(Title title, Synopsis synopsis, ImagePath coverPath, FormatType formatType) {
+        SeriesId newId = new SeriesId(SharedIdGenerator.generateV7());
+        return new Series(newId, title, synopsis, coverPath, Status.DRAFT, formatType);
+    }
+
+    // Factory Method for reconstituting existing instances from persistence
+    public static Series restore(SeriesId id, Title title, Synopsis synopsis, ImagePath coverPath, Status status, FormatType formatType) {
+        return new Series(id, title, synopsis, coverPath, status, formatType);
+    }
+
+    // Domain Business Rules / Behavior
+    public void publish() {
+        if (this.status == Status.PUBLISHED) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_ALREADY_PUBLISHED);
+        }
+        if (this.coverPath == null) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_CANNOT_PUBLISH_WITHOUT_COVER);
+        }
+        this.status = Status.PUBLISHED;
+    }
+
+    public void updateDetails(Title newTitle, Synopsis newSynopsis, ImagePath newCoverPath, FormatType newFormatType) {
+        this.title = Objects.requireNonNull(newTitle, "Title cannot be null");
+        this.synopsis = Objects.requireNonNull(newSynopsis, "Synopsis cannot be null");
+        this.coverPath = Objects.requireNonNull(newCoverPath, "Cover path cannot be null");
+        this.formatType = Objects.requireNonNull(newFormatType, "Format type cannot be null");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Series series = (Series) o;
+        return Objects.equals(id, series.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+}
+// Arquivo: Status.java
+// Descrição: Classe do módulo OphisLibrary API (Status)
+
+package com.ophislibrary.catalog.series.core;
+
+public enum Status {
+    DRAFT,
+    PUBLISHED,
+    ON_HIATUS,
+    COMPLETED
+}
+
+// Arquivo: Synopsis.java
+// Descrição: Classe do módulo OphisLibrary API (Synopsis)
+
+package com.ophislibrary.catalog.series.core;
+
+import com.ophislibrary.catalog.shared.CatalogDomainException;
+import com.ophislibrary.catalog.shared.CatalogErrorCode;
+
+public record Synopsis(String value) {
+
+    public Synopsis {
+        if (value == null || value.isBlank()) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_SYNOPSIS);
+        }
+
+        String trimmed = value.trim();
+        if (trimmed.length() < 10 || trimmed.length() > 2000) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_SYNOPSIS);
+        }
+
+        value = trimmed;
+    }
+}
+// Arquivo: Title.java
+// Descrição: Classe do módulo OphisLibrary API (Title)
+
+package com.ophislibrary.catalog.series.core;
+
+import com.ophislibrary.catalog.shared.CatalogDomainException;
+import com.ophislibrary.catalog.shared.CatalogErrorCode;
+
+public record Title(String value) {
+
+    public Title {
+        if (value == null || value.isBlank()) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_TITLE);
+        }
+
+        String trimmed = value.trim();
+        if (trimmed.length() < 2 || trimmed.length() > 120) {
+            throw new CatalogDomainException(CatalogErrorCode.SERIES_INVALID_TITLE);
+        }
+
+        value = trimmed;
+    }
+}
+// Arquivo: CatalogDomainException.java
+// Descrição: Classe do módulo OphisLibrary API (CatalogDomainException)
+
+package com.ophislibrary.catalog.shared;
+
+import java.util.Objects;
+
+public class CatalogDomainException extends RuntimeException {
+
+    private final CatalogErrorCode errorCode;
+
+    public CatalogDomainException(CatalogErrorCode errorCode) {
+        super(errorCode.getDefaultMessage());
+        this.errorCode = Objects.requireNonNull(errorCode, "CatalogErrorCode cannot be null");
+    }
+
+    public CatalogDomainException(CatalogErrorCode errorCode, String customDetail) {
+        super(customDetail != null && !customDetail.isBlank() ? customDetail : errorCode.getDefaultMessage());
+        this.errorCode = Objects.requireNonNull(errorCode, "CatalogErrorCode cannot be null");
+    }
+
+    public CatalogErrorCode getErrorCode() {
+        return errorCode;
+    }
+}
+// Arquivo: CatalogErrorCode.java
+// Descrição: Classe do módulo OphisLibrary API (CatalogErrorCode)
+
+package com.ophislibrary.catalog.shared;
+
+import org.springframework.http.HttpStatus;
+
+public enum CatalogErrorCode {
+
+    // 400 Bad Request / 422 Unprocessable Content - Domain Validations
+    SERIES_INVALID_ID("SERIES_001", "Series ID cannot be null.", HttpStatus.BAD_REQUEST),
+    SERIES_INVALID_TITLE("SERIES_002", "Title must be between 2 and 120 characters.", HttpStatus.UNPROCESSABLE_CONTENT),
+    SERIES_INVALID_SYNOPSIS("SERIES_003", "Synopsis must be between 10 and 2000 characters.", HttpStatus.UNPROCESSABLE_CONTENT),
+    SERIES_INVALID_COVER_PATH("SERIES_004", "Cover image path cannot be null or empty.", HttpStatus.UNPROCESSABLE_CONTENT),
+    SERIES_NULL_PARAMETER("SERIES_005", "Required parameter cannot be null.", HttpStatus.BAD_REQUEST),
+
+    // 409 Conflict - State Transitions & Rules
+    SERIES_ALREADY_PUBLISHED("SERIES_100", "Series is already published.", HttpStatus.CONFLICT),
+    SERIES_CANNOT_PUBLISH_WITHOUT_COVER("SERIES_101", "Cannot publish a series without a valid cover image.", HttpStatus.CONFLICT),
+
+    // 404 Not Found
+    SERIES_NOT_FOUND("SERIES_404", "Series not found with the provided identifier.", HttpStatus.NOT_FOUND);
+
+    private final String code;
+    private final String defaultMessage;
+    private final HttpStatus httpStatus;
+
+    CatalogErrorCode(String code, String defaultMessage, HttpStatus httpStatus) {
+        this.code = code;
+        this.defaultMessage = defaultMessage;
+        this.httpStatus = httpStatus;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
+    }
+}
+// Arquivo: SharedIdGenerator.java
+// Descrição: Classe do módulo OphisLibrary API (SharedIdGenerator)
+
+package com.ophislibrary.catalog.shared;
+
+import org.hibernate.id.uuid.UuidVersion7Strategy;
+
+import java.util.UUID;
+
+public final class SharedIdGenerator {
+
+    private SharedIdGenerator() {}
+
+    public static UUID generateV7() {
+        return UuidVersion7Strategy.INSTANCE.generateUuid(null);
+    }
+}
+
+// Arquivo: GlobalExceptionHandler.java
+// Descrição: Classe do módulo OphisLibrary API (GlobalExceptionHandler)
+
+package com.ophislibrary.catalog.shared.web;
+
+import com.ophislibrary.catalog.shared.CatalogDomainException;
+import com.ophislibrary.catalog.shared.CatalogErrorCode;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.net.URI;
+import java.time.Instant;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(CatalogDomainException.class)
+    public ProblemDetail handleCatalogDomainException(CatalogDomainException ex) {
+        CatalogErrorCode errorCode = ex.getErrorCode();
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                errorCode.getHttpStatus(),
+                ex.getMessage()
+        );
+
+        // title assume o nome do erro no enum ou cÃ³digo amigÃ¡vel sem duplicar a chave extra
+        problemDetail.setTitle(errorCode.name());
+        problemDetail.setType(URI.create("https://api.ophislibrary.com/errors/" + errorCode.getCode().toLowerCase()));
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        return problemDetail;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidationException(MethodArgumentNotValidException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "One or more fields in the request payload are invalid."
+        );
+
+        Map<String, String> invalidParams = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Invalid value",
+                        (first, second) -> first
+                ));
+
+        problemDetail.setTitle("INVALID_REQUEST_PAYLOAD");
+        problemDetail.setType(URI.create("https://api.ophislibrary.com/errors/invalid-request-payload"));
+        problemDetail.setProperty("invalidParams", invalidParams);
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        return problemDetail;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGenericException(Exception ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected internal error occurred. Please try again later."
+        );
+
+        problemDetail.setTitle("INTERNAL_SERVER_ERROR");
+        problemDetail.setType(URI.create("https://api.ophislibrary.com/errors/internal-server-error"));
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        return problemDetail;
+    }
+}
